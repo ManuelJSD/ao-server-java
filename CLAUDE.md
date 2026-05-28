@@ -25,7 +25,7 @@ java -jar server/target/server-1.0-SNAPSHOT-jar-with-dependencies.jar
 
 ## Entry Point
 
-`com.ao.Bootstrap.main()` → initializes Guice (6 modules), loads game data from `data/`, starts Netty on `127.0.0.1:7666`.
+`com.ao.Bootstrap.main()` → initializes Guice (6 modules), loads game data from `data/`, starts game timers (7-thread pool), starts Netty on `0.0.0.0:7666`.
 
 ## Testing
 

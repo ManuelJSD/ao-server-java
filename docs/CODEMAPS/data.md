@@ -1,10 +1,11 @@
-<!-- Generated: 2026-05-09 | Files scanned: 258 classes / 47 packages | Token estimate: ~700 -->
+<!-- Generated: 2026-05-28 | Files scanned: 266 classes / 47 packages | Token estimate: ~700 -->
 
 # Data
 
 ## Storage: File-Based (No Database)
 
 All persistence is via legacy flat files under `data/`. No migrations — data files are loaded read-only at startup.
+Write (world save) is not yet implemented.
 
 ## Data Files
 
@@ -26,8 +27,22 @@ Character (interface)
 │   └── attrs: Strength, Dexterity, Intelligence, Charisma, Constitution
 │   └── Race (HUMAN, ELF, DARK_ELF, GNOME, DWARF)
 │   └── Gender, Archetype (17 types), Guild, Skills (enum)
+│   └── regenHpAndMana(), regenStamina(), tickHunger(), tickThirst()
 └── NpcCharacter (NpcCharacterImpl)
     └── NpcType, AIType, MovementStrategy, Drop
+```
+
+### Archetypes (17 concrete classes)
+
+```
+Archetype (abstract base)
+└── DefaultArchetype (shared behavior template)
+    └── UserArchetype (generic user archetype)
+    └── WarriorArchetype, MageArchetype, PaladinArchetype, ClericArchetype
+    └── AssasinArchetype, BardArchetype, DruidArchetype, BanditArchetype
+    └── ThiefArchetype, PirateArchetype, HunterArchetype, FisherArchetype
+    └── LumberjackArchetype, MinerArchetype, BlacksmithArchetype
+    └── CarpenterArchetype, WorkerArchetype
 ```
 
 ### WorldObject Hierarchy (43 ObjectType values)
@@ -61,18 +76,18 @@ Spell
 
 ```
 Map
-├── id, width, height
+├── id, width, height (100x100)
 ├── tiles: Tile[][]
 │   └── Tile: blocked (bool), trigger (Trigger enum), objects, npc
 ├── City references
-└── Area zones
+└── Area zones (visible area: 8x6 tiles, max distance: 12 tiles)
 ```
 
 ### User/Account Model
 
 ```
 Account (AccountImpl)
-├── username, passwordHash
+├── username, passwordHash (MD5)
 └── Guild reference
 
 UserCharacter (wraps Character)
@@ -85,11 +100,11 @@ UserCharacter (wraps Character)
 
 ## Configuration Files (Not Game Data)
 
-| File                                           | Format          | Loaded By                        |
-|------------------------------------------------|-----------------|----------------------------------|
-| `data/config/server.ini`                       | INI             | ServerConfigIni                  |
-| `server/src/main/resources/project.properties` | Java Properties | ApplicationProperties            |
-| `server/src/main/resources/tinylog.properties` | Java Properties | tinylog runtime (classpath scan) |
+| File                                              | Format          | Loaded By                        |
+|---------------------------------------------------|-----------------|----------------------------------|
+| `data/config/server.ini`                          | INI             | ServerConfigIni                  |
+| `server/src/main/resources/project.properties`   | Java Properties | ApplicationProperties            |
+| `server/src/main/resources/tinylog.properties`   | Java Properties | tinylog runtime (classpath scan) |
 
 `project.properties` keys: `config.path.maps`, `config.path.server`, `config.heads.<race>.<gender>` (ranges),
 `config.bodies.<race>.<gender>` (ranges), `config.inventory.itemperrow`, `config.security.manager`

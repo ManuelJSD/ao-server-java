@@ -19,14 +19,15 @@ de mantenerse.</b>
 ## ✨ Caracteristicas
 
 - 🔌 **Networking asincrono** con [Netty](https://netty.io/) (NIO, patron Reactor)
-- 💉 **Inyeccion de dependencias** con [Google Guice](https://github.com/google/guice)
+- 💉 **Inyeccion de dependencias** con [Google Guice](https://github.com/google/guice) (6 modulos)
 - 🗺️ **290 mapas** cargados desde formato binario legacy (100×100 tiles)
-- 🎭 **14 arquetipos** de personaje (Guerrero, Mago, Paladin, Clerigo, etc.)
+- 🎭 **17 arquetipos** de personaje (Guerrero, Mago, Paladin, Clerigo, Druida, Ladron, etc.)
 - 🧬 **5 razas** (Humano, Elfo, Elfo Oscuro, Enano, Gnomo)
-- 🗡️ **~30 tipos de objetos** (armas, armaduras, pociones, botes, instrumentos...)
+- 🗡️ **43 tipos de objetos** (armas, armaduras, pociones, botes, instrumentos...)
 - ✨ **8 efectos de hechizo** (curacion, veneno, paralisis, invisibilidad...)
-- 🧪 **64 tests unitarios** con JUnit 5 + AssertJ + Mockito
-- 📊 **CI/CD** con GitHub Actions y reportes de cobertura.
+- ⏱️ **Game timers** activos: regeneracion HP/mana/stamina, hambre, sed, IA NPC, guardado
+- 🧪 **72 tests** con JUnit 5 + AssertJ + Mockito
+- 📊 **CI/CD** con GitHub Actions y reportes de cobertura
 
 > [!TIP]
 > Para un analisis tecnico profundo de la arquitectura de red (Netty), inyeccion de dependencias (Guice) y modelo de
@@ -51,8 +52,8 @@ aoserver (POM padre)
 | Build         | Maven (multi-modulo)                           |
 | Networking    | Netty 4.1.119.Final                            |
 | IoC/DI        | Google Guice 7.0.0                             |
-| Logging       | SLF4J 2.0.17 + Logback 1.5.18                  |
-| Configuracion | Apache Commons Configuration2                  |
+| Logging       | tinylog 2.7.0                                  |
+| Configuracion | Apache Commons Configuration2 2.12.0          |
 | Validacion    | Hibernate Validator 9.0.0                      |
 | Testing       | JUnit 5.13.4 · AssertJ 3.27.3 · Mockito 5.18.0 |
 | Cobertura     | JaCoCo 0.8.13                                  |
@@ -74,18 +75,18 @@ com.ao
 ├── Bootstrap          ← Punto de entrada
 ├── AOServer           ← Servidor Netty
 ├── action/            ← Executor asincrono de acciones
-├── config/            ← Configuracion (INI)
+├── config/            ← Configuracion (INI + intervals)
 ├── context/           ← Contexto de aplicacion (Guice)
 ├── data/dao/          ← DAOs para archivos legacy
-├── ioc/module/        ← 5 modulos Guice
+├── ioc/module/        ← 6 modulos Guice
 ├── model/
-│   ├── character/     ← Personajes, NPCs, arquetipos, comportamientos
+│   ├── character/     ← Personajes, NPCs, 17 arquetipos, comportamientos
 │   ├── inventory/     ← Sistema de inventario
 │   ├── map/           ← Mapas, tiles, posiciones, ciudades
-│   ├── object/        ← ~30 tipos de objetos
+│   ├── object/        ← 43 tipos de objetos
 │   ├── spell/         ← Hechizos y efectos
 │   └── user/          ← Usuarios y cuentas
-├── network/           ← Paquetes entrantes (7) y salientes (22)
+├── network/           ← Paquetes entrantes (11) y salientes (25)
 ├── service/           ← Servicios de negocio
 └── utils/             ← Utilidades (INI parser, rangos)
 ```
@@ -137,7 +138,7 @@ ServerSoloGMs = 0
 ### `project.properties` — Rutas y configuracion interna
 
 Define rutas a archivos de datos (`objects.dat`, `npcs.dat`, `cities.dat`, mapas), configuracion de razas (heads y
-bodies), y otros parametros internos.
+bodies), inventario, seguridad y otros parametros internos.
 
 ---
 
@@ -153,13 +154,14 @@ mvn test
 
 | Capa                | Tests | Estado      |
 |---------------------|-------|-------------|
-| Objetos (~30 tipos) | 35    | ✅ Excelente |
+| Objetos (43 tipos)  | 35    | ✅ Excelente |
 | Efectos de hechizo  | 7     | ✅ Buena     |
 | DAOs                | 5     | ✅ Buena     |
-| Servicios           | 4     | ⚠️ Parcial  |
+| Servicios           | 5     | ⚠️ Parcial  |
 | Personajes          | 4     | ⚠️ Parcial  |
 | Red (paquetes)      | 2     | ⚠️ Basica   |
 | Mapas               | 2     | ✅ Buena     |
+| Configuracion       | 2     | ✅ Buena     |
 | Usuarios            | 1     | ⚠️ Basica   |
 
 ---
@@ -171,38 +173,42 @@ mvn test
 - Modelo de dominio completo (personajes, objetos, hechizos, mapas)
 - Lectura de datos legacy (archivos INI y mapas binarios)
 - Infraestructura de red con Netty
-- Inyeccion de dependencias con Guice
+- Inyeccion de dependencias con Guice (6 modulos)
 - Login (personaje existente y nuevo)
+- Desconexion limpia de usuarios (`QuitPacket`)
 - Chat (hablar, gritar, susurrar)
-- Movimiento de personajes
+- Movimiento de personajes y cambio de orientacion
+- Click izquierdo sobre entidades del mapa
+- **Game timers**: regeneracion HP/mana, stamina, hambre, sed, IA NPC, guardado periodico
 - CI/CD con GitHub Actions
 
 ### 🔧 En progreso / Pendiente
 
-- Game loop (timers del juego)
 - Sistema de combate PvP/PvE
+- IA de NPCs (timers activos, logica de comportamiento pendiente)
 - Sistema de comercio
 - Crafting
 - Guilds/Clanes
-- Persistencia de personajes (escritura)
-- Cifrado real de trafico
-- Mas paquetes del protocolo AO (~43 pendientes)
-- Spawning de NPCs
+- Persistencia de personajes (escritura / world save)
+- Cifrado real de trafico (DefaultSecurityManager no cifra)
+- Mas paquetes del protocolo AO (~118 pendientes del total del protocolo)
+- Spawning completo de NPCs
 - Administracion en runtime (comandos GM)
+- Efectos temporales (veneno, paralisis, invisibilidad)
 
 ---
 
 ## 📁 Datos del Juego
 
-| Recurso     | Ubicacion                     | Formato                          |
-|-------------|-------------------------------|----------------------------------|
-| Mapas (290) | `resources/maps/`             | Binario (`.map`, `.inf`, `.dat`) |
-| Objetos     | `resources/data/objects.dat`  | INI                              |
-| NPCs        | `resources/data/npcs.dat`     | INI                              |
-| Ciudades    | `resources/data/cities.dat`   | INI                              |
-| Arquetipos  | `resources/data/balances.dat` | INI                              |
-| Personajes  | `charfiles/`                  | INI                              |
-| Servidor    | `resources/server.ini`        | INI                              |
+| Recurso      | Ubicacion                     | Formato                          |
+|--------------|-------------------------------|----------------------------------|
+| Mapas (290)  | `data/maps/`                  | Binario (`.map`, `.inf`, `.dat`) |
+| Objetos      | `data/objects.dat`            | INI                              |
+| NPCs         | `data/npcs.dat`               | INI                              |
+| Ciudades     | `data/cities.dat`             | INI                              |
+| Arquetipos   | `data/balances.dat`           | INI                              |
+| Personajes   | `charfiles/`                  | INI (`.chr`)                     |
+| Servidor     | `data/config/server.ini`      | INI                              |
 
 ---
 

@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-09 | Files scanned: 258 classes / 47 packages | Token estimate: ~600 -->
+<!-- Generated: 2026-05-28 | Files scanned: 266 classes / 47 packages | Token estimate: ~600 -->
 
 # Architecture
 
@@ -38,9 +38,12 @@ aoserver (parent POM)
 
 1. `InjectorFactory` creates Guice Injector (6 modules)
 2. `MapService.loadMaps()` — 290 binary map files
-3. `ObjectService.loadObjects()` — INI objects.dat
-4. `NpcService.loadNpcs()` — INI npcs.dat
-5. `AOServer.run()` — Netty boss/worker event loops bind on `127.0.0.1:7666`
+3. `MapService.loadCities()` — INI cities.dat
+4. `ObjectService.loadObjects()` — INI objects.dat
+5. `NpcService.loadNpcs()` — INI npcs.dat
+6. `configureNetworking()` — sets bind address from `server.ini`
+7. `startTimers()` — 7-thread ScheduledExecutorService for game loops
+8. `AOServer.run()` — Netty boss/worker event loops bind on `0.0.0.0:7666`
 
 ## Layer Responsibilities
 
@@ -51,8 +54,9 @@ aoserver (parent POM)
 | Services        | Business logic, game state    | `service/`                                             |
 | DAOs            | File I/O                      | `data/dao/`                                            |
 | Domain model    | Entities, value objects       | `model/`                                               |
-| IoC             | Guice wiring                  | `ioc/module/`                                          |
+| IoC             | Guice wiring (6 modules)      | `ioc/module/`                                          |
 | Actions         | Async command queue           | `action/`                                              |
+| Timers          | Game loops (7 threads)        | `Bootstrap.startTimers()`                              |
 
 ## Key Design Patterns
 
@@ -61,3 +65,4 @@ aoserver (parent POM)
 - **Service Locator**: `ApplicationContext.getInstance(T)` used at startup boundaries only
 - **Strategy**: `MovementStrategy`, `AttackStrategy`, `AIType` on NPC
 - **Action Queue**: single-threaded `ActionExecutor` serializes world mutations
+- **Template Method**: `DefaultArchetype` provides base behavior; concrete archetypes override specifics

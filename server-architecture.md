@@ -1,7 +1,7 @@
 # 📖 Documentación Técnica — AO-Server
 
 > **Análisis completo del servidor de Argentum Online en Java**
-> Fecha: 2026-05-05 · Generada automáticamente por análisis de código fuente
+> Fecha: 2026-05-28 · Actualizada manualmente desde análisis de código fuente
 
 ---
 
@@ -13,7 +13,7 @@
 - **Google Guice** para inyección de dependencias (IoC)
 - **Maven** como build system multi-módulo
 - **JUnit 5 + AssertJ + Mockito** para testing
-- **SLF4J + Logback** para logging
+- **tinylog 2.7.0** para logging
 
 El proyecto está basado en [AOXP-Server](https://github.com/aoxp/AOXP-Server) (commit `daa8d10`) ya que la implementación original dejó de mantenerse.
 
@@ -39,18 +39,19 @@ graph TD
 ## 📦 Stack Tecnológico
 
 | Categoría | Tecnología | Versión |
-|-----------|-----------|---------|
+|-----------|-----------|---------| 
 | **Lenguaje** | Java | 17 |
-| **Build** | Maven | - |
+| **Build** | Maven | 3.8+ |
 | **Networking** | Netty (NIO) | 4.1.119.Final |
 | **IoC/DI** | Google Guice | 7.0.0 |
 | **Utilidades** | Google Guava | 32.0.1-jre |
-| **Logging** | SLF4J + Logback | 2.0.17 / 1.5.18 |
+| **Logging** | tinylog | 2.7.0 |
 | **Configuración** | Apache Commons Configuration2 | 2.12.0 |
 | **Validación** | Hibernate Validator + Expressly | 9.0.0 / 6.0.0 |
+| **Serialización** | Jackson YAML + Databind | 2.18.2 |
 | **Testing** | JUnit 5 + AssertJ + Mockito | 5.13.4 / 3.27.3 / 5.18.0 |
 | **Cobertura** | JaCoCo + Coveralls | 0.8.13 |
-| **CI/CD** | GitHub Actions | - |
+| **CI/CD** | GitHub Actions | — |
 
 ---
 
@@ -67,6 +68,7 @@ com.ao
 │
 ├── config/                     ← Configuración del servidor
 │   ├── ArchetypeConfiguration.java
+│   ├── IntervalsConfig.java    ← Intervalos de timers del juego
 │   ├── ServerConfig.java       ← Interfaz de configuración
 │   └── ini/
 │       ├── ArchetypeConfigurationIni.java
@@ -97,9 +99,9 @@ com.ao
 │
 ├── ioc/                        ← Módulos Guice (DI)
 │   ├── ArchetypeLocator.java
-│   ├── InjectorFactory.java    ← Fábrica central del Injector
+│   ├── InjectorFactory.java    ← Fábrica central del Injector (6 módulos)
 │   └── module/
-│       ├── ArchetypeModule.java
+│       ├── ArchetypeModule.java    ← @Provides para 17 arquetipos
 │       ├── BootstrapModule.java
 │       ├── ConfigurationModule.java
 │       ├── DaoModule.java
@@ -112,7 +114,7 @@ com.ao
 │   │   ├── UserCharacter.java  ← Personaje de jugador
 │   │   ├── NpcCharacter.java   ← Personaje NPC
 │   │   ├── Race.java, Gender.java, Skill.java, Attribute.java...
-│   │   ├── archetype/          ← 14 arquetipos (Mage, Warrior, etc.)
+│   │   ├── archetype/          ← 17 arquetipos concretos (+ DefaultArchetype, UserArchetype)
 │   │   ├── attack/             ← Estrategias de ataque
 │   │   ├── behavior/           ← Comportamientos NPC (Hostile, Pet, Null)
 │   │   ├── movement/           ← Estrategias de movimiento (Greedy, Quiet)
@@ -134,7 +136,7 @@ com.ao
 │   │   ├── Trigger.java        ← Triggers de tiles
 │   │   └── area/AreaInfo.java  ← Info de área visible
 │   │
-│   ├── object/                 ← ~30 tipos de objetos del juego
+│   ├── object/                 ← 43 tipos de objetos del juego
 │   │   ├── Object.java         ← Interfaz base
 │   │   ├── Item.java, Weapon.java, Armor.java, Shield.java...
 │   │   ├── Food.java, Drink.java, HPPotion.java, ManaPotion.java...
@@ -160,19 +162,27 @@ com.ao
 │   └── packet/
 │       ├── IncomingPacket.java  ← Interfaz para paquetes cliente→servidor
 │       ├── OutgoingPacket.java  ← Interfaz para paquetes servidor→cliente
-│       ├── incoming/           ← 8 paquetes entrantes implementados
+│       ├── incoming/           ← 11 paquetes entrantes implementados
 │       │   ├── LoginExistingCharacterPacket
 │       │   ├── LoginNewCharacterPacket
 │       │   ├── TalkPacket, YellPacket, WhisperPacket
-│       │   ├── WalkPacket
+│       │   ├── WalkPacket, ChangeHeadingPacket
+│       │   ├── LeftClickPacket
+│       │   ├── QuitPacket
 │       │   ├── PingPacket
 │       │   └── ThrowDicesPacket
-│       └── outgoing/           ← 22 paquetes salientes implementados
+│       └── outgoing/           ← 25 paquetes salientes implementados
 │           ├── AreaChangedPacket, BlockPositionPacket
-│           ├── ChangeInventorySlotPacket, ChangeMapPacket
+│           ├── ChangeInventorySlotPacket, ChangeMapPacket, ChangeSpellSlotPacket
 │           ├── CharacterCreatePacket, ConsoleMessagePacket
-│           ├── DiceRollPacket, ErrorMessagePacket
-│           ├── UpdateUserStatsPacket, ...
+│           ├── DiceRollPacket, DisconnectPacket, ErrorMessagePacket
+│           ├── GuildChatPacket, MultiMessagePacket
+│           ├── ObjectCreatePacket, ParalyzedPacket
+│           ├── PlayMidiPacket, PlayWavePacket, PongPacket
+│           ├── SetInvisiblePacket, UpdateDexterityPacket
+│           ├── UpdateHungerAndThirstPacket, UpdateStrengthAndDexterityPacket
+│           ├── UpdateStrengthPacket, UpdateUserStatsPacket
+│           ├── UserCharacterIndexInServerPacket, UserIndexInServer
 │
 ├── service/                    ← Capa de servicios
 │   ├── AreaService.java → AreaServiceImpl
@@ -212,11 +222,12 @@ sequenceDiagram
     participant Ctx as ApplicationContext
     participant Guice as Guice Injector
     participant Services as Services Layer
+    participant Timers as ScheduledExecutorService
     participant Server as AOServer
 
     Main->>Ctx: loadApplicationContext()
     Ctx->>Guice: InjectorFactory.get(properties)
-    Guice-->>Ctx: Injector con 5 módulos
+    Guice-->>Ctx: Injector con 6 módulos
 
     Main->>Services: MapService.loadMaps()
     Main->>Services: MapService.loadCities()
@@ -225,6 +236,9 @@ sequenceDiagram
 
     Main->>Server: configureNetworking()
     Note right of Server: Bind 0.0.0.0:7666
+
+    Main->>Timers: startTimers()
+    Note right of Timers: 7 hilos: HP/mana, stamina,\nhambre, sed, IA NPC,\nworld save, efectos temp.
 
     Main->>Server: server.run()
     Note right of Server: Netty EventLoop activo
@@ -251,7 +265,7 @@ graph LR
     end
 ```
 
-### Paquetes Entrantes Implementados (8)
+### Paquetes Entrantes Implementados (11)
 
 | ID | Paquete | Descripción |
 |----|---------|-------------|
@@ -262,11 +276,38 @@ graph LR
 | 4 | `YellPacket` | Gritar (chat amplio) |
 | 5 | `WhisperPacket` | Susurro (chat privado) |
 | 6 | `WalkPacket` | Movimiento del personaje |
+| — | `ChangeHeadingPacket` | Cambiar orientación (N/S/E/W) |
+| — | `LeftClickPacket` | Click izquierdo sobre entidad |
+| — | `QuitPacket` | Desconexión limpia del cliente |
 | 119 | `PingPacket` | Heartbeat para latencia |
 
-### Paquetes Salientes Implementados (22)
+### Paquetes Salientes Implementados (25)
 
-Entre los más relevantes: `CharacterCreate`, `ChangeMap`, `UpdateUserStats`, `ConsoleMessage`, `ErrorMessage`, `DiceRoll`, `PlayMidi`, `PlayWave`, `ChangeInventorySlot`, `ChangeSpellSlot`, etc.
+| Categoría | Paquetes |
+|-----------|----------|
+| Auth/Sesión | `UserIndexInServer`, `UserCharacterIndexInServerPacket`, `CharacterCreatePacket`, `DisconnectPacket` |
+| Mapa/Movimiento | `ChangeMapPacket`, `AreaChangedPacket`, `BlockPositionPacket` |
+| Inventario | `ChangeInventorySlotPacket`, `ChangeSpellSlotPacket`, `ObjectCreatePacket` |
+| Estadísticas | `UpdateUserStatsPacket`, `UpdateStrengthPacket`, `UpdateDexterityPacket`, `UpdateStrengthAndDexterityPacket`, `UpdateHungerAndThirstPacket` |
+| Estado | `ParalyzedPacket`, `SetInvisiblePacket` |
+| Chat | `ConsoleMessagePacket`, `ErrorMessagePacket`, `GuildChatPacket`, `MultiMessagePacket` |
+| Juego | `DiceRollPacket`, `PlayMidiPacket`, `PlayWavePacket`, `PongPacket` |
+
+---
+
+## ⏱️ Game Timers (Bootstrap)
+
+El método `startTimers()` inicializa un `ScheduledExecutorService` con **7 hilos** (`game-timer-N`) que ejecutan las siguientes tareas en paralelo:
+
+| Timer | Intervalo | Estado |
+|-------|-----------|--------|
+| Regeneración HP/Mana | `intervals.regen.hp` | ✅ Implementado |
+| Regeneración Stamina | `intervals.regen.stamina` | ✅ Implementado |
+| Hambre | `intervals.survival.hunger` | ✅ Implementado |
+| Sed | `intervals.survival.thirst` | ✅ Implementado |
+| IA de NPCs | `intervals.npc.aiTick` | 🔧 Timer activo, lógica pendiente |
+| World Save | `intervals.world.saveInterval` (min) | 🔧 Timer activo, escritura pendiente |
+| Efectos temporales | `intervals.states.poison` | 🔧 Timer activo, lógica pendiente |
 
 ---
 
@@ -312,9 +353,11 @@ classDiagram
     MovementStrategy <|-- QuietMovementStrategy
 ```
 
-### Arquetipos (14 clases)
+### Arquetipos (17 clases concretas)
 
 Warrior, Mage, Paladin, Cleric, Assasin, Bard, Druid, Bandit, Thief, Pirate, Hunter, Fisher, Lumberjack, Miner, Blacksmith, Carpenter, Worker.
+
+> Además existen `DefaultArchetype` (base de comportamiento compartido) y `UserArchetype` (archetype de usuario genérico).
 
 ### Razas y Géneros
 
@@ -340,15 +383,16 @@ Creature, Guard, Merchant, Trainer, Governor, Noble (cada uno en `npc.properties
 
 ## 💉 Sistema de Inyección de Dependencias
 
-El IoC usa **Google Guice** con 5 módulos:
+El IoC usa **Google Guice** con **6 módulos**:
 
 | Módulo | Bindings principales |
 |--------|---------------------|
-| `BootstrapModule` | `ServerConfig` → `ServerConfigIni` |
+| `BootstrapModule` | `ServerConfig` → `ServerConfigIni`, `IntervalsConfig` |
 | `ConfigurationModule` | `ArchetypeConfiguration` → INI |
-| `DaoModule` | `MapDAO`, `AccountDAO`, `ObjectDAO`, `CityDAO`, `NpcCharacterDAO` → Impl INI |
-| `ServiceModule` | `LoginService`, `MapService`, `ObjectService`, `UserService`, `NpcService`, etc. → Impls |
+| `DaoModule` | Los 6 DAO interfaces → implementaciones (Singleton) |
+| `ServiceModule` | Todos los service interfaces → implementaciones (Singleton); parámetros de configuración nombrados |
 | `SecurityModule` | `SecurityManager` → cargado dinámicamente por reflection |
+| `ArchetypeModule` | 17 métodos `@Provides` (uno por clase de arquetipo) |
 
 > [!WARNING]
 > El `ApplicationContext` usa un **patrón Service Locator estático** que los propios desarrolladores marcan como TODO para eliminar. Esto dificulta la testabilidad y acopla el código.
@@ -361,23 +405,25 @@ La capa de datos lee formatos **legacy INI** del AO original:
 
 | DAO | Archivo fuente | Datos |
 |-----|---------------|-------|
-| `ObjectDAOIni` | `data/objects.dat` | ~600+ objetos del juego |
+| `ObjectDAOIni` | `data/objects.dat` | 43 tipos de objeto del juego |
 | `NpcDAOIni` | `data/npcs.dat` | NPCs del mundo |
 | `CityDAOIni` | `data/cities.dat` | Ciudades y spawn points |
-| `UserDAOIni` | `charfiles/` | Archivos de personaje |
-| `MapDAOImpl` | `maps/MapaN.{map,inf,dat}` | Mapas binarios |
+| `UserDAOIni` | `charfiles/*.chr` | Archivos de personaje |
+| `MapDAOImpl` | `data/maps/MapaN.{map,inf,dat}` | Mapas binarios |
 
 > [!NOTE]
-> No hay base de datos relacional. Todo se persiste en archivos INI y binarios, manteniendo compatibilidad con el formato original de Argentum Online.
+> No hay base de datos relacional. Todo se persiste en archivos INI y binarios, manteniendo compatibilidad con el formato original de Argentum Online. El guardado (write) aún no está implementado.
 
 ---
 
 ## ⚙️ Configuración
 
 ### `project.properties` — Configuración del contexto de aplicación
+
 Rutas a archivos de datos, configuración de razas (heads y bodies), inventario, seguridad.
 
 ### `server.ini` — Configuración del servidor en formato INI
+
 - **Puerto**: 7666 (por defecto)
 - **Versión del cliente**: 0.13.0
 - **Max usuarios**: 550
@@ -386,27 +432,32 @@ Rutas a archivos de datos, configuración de razas (heads y bodies), inventario,
 - **Intervalos de juego**: Regeneración, hambre, sed, veneno, movimiento, ataque, etc.
 - **MD5 Hashes**: Verificación de integridad del cliente
 
+### `tinylog.properties` — Configuración de logging
+
+Configuración del sistema de logging tinylog (escrito por classpath scan en runtime).
+
 ---
 
 ## 🧪 Testing
 
 | Métrica | Valor |
 |---------|-------|
-| **Archivos de test** | 64 |
-| **Archivos de producción** | 254 (+3 security) |
-| **Ratio test/src** | ~25% |
+| **Archivos de test** | 72 |
+| **Archivos de producción** | 266 (+3 security) |
+| **Ratio test/src** | ~27% |
 
 ### Cobertura por capa:
 
 | Capa | Tests | Observación |
 |------|-------|-------------|
-| **Model (objects)** | ✅ 35 tests | Excelente cobertura de ~30 tipos de objeto |
+| **Model (objects)** | ✅ 35 tests | Excelente cobertura de 43 tipos de objeto |
 | **Model (spell effects)** | ✅ 7 tests | Buena cobertura |
 | **Model (character)** | ⚠️ 4 tests | Solo Reputation, Archetype, Movement |
 | **Model (map)** | ✅ 2 tests | Map y Position |
 | **Data (DAO)** | ✅ 5 tests | CityDAO, NpcDAO, ObjectDAO, UserDAO, MapDAO |
 | **Network** | ⚠️ 2 tests | Solo LoginPackets |
-| **Service** | ⚠️ 4 tests | CharacterBody, MapService, TimedEvents |
+| **Service** | ⚠️ 5 tests | CharacterBody, MapService, TimedEvents, otros |
+| **Config** | ✅ 2 tests | Configuración de servidor e intervalos |
 | **Model (user)** | ✅ 1 test | AccountImpl |
 
 ### CI/CD
@@ -424,47 +475,45 @@ GitHub Actions ejecuta en cada push/PR a `main`:
 
 ```mermaid
 pie title Estado de Implementación
-    "Modelo de dominio" : 40
+    "Modelo de dominio" : 38
     "Capa de datos (DAOs)" : 15
-    "Red (Netty + paquetes)" : 15
-    "Servicios" : 15
+    "Red (Netty + paquetes)" : 17
+    "Servicios + Timers" : 15
     "Testing" : 10
     "Configuración + IoC" : 5
 ```
 
-### ✅ Lo que FUNCIONA (o está muy avanzado)
+### ✅ Lo que FUNCIONA
 
-- **Modelo de dominio completo**: Personajes, NPCs, objetos (~30 tipos), hechizos, mapas, inventario
-- **Capa de datos**: Lectura de archivos INI y mapas binarios legacy. Se ha estabilizado la carga tolerando huecos (`objects.dat`) e ignorando falsos errores de NPCs.
+- **Modelo de dominio completo**: Personajes, NPCs, objetos (43 tipos), hechizos, mapas, inventario
+- **Capa de datos**: Lectura de archivos INI y mapas binarios legacy. Carga tolerante con huecos en `objects.dat` e ignorando falsos errores de NPCs
 - **Infraestructura de red**: Pipeline Netty con cifrado/descifrado, decodificación/codificación
-- **Inyección de dependencias**: 5 módulos Guice configurados
+- **Inyección de dependencias**: 6 módulos Guice configurados (incluido ArchetypeModule)
 - **CI/CD**: Pipeline completo con tests y cobertura
-- **Paquetes básicos**: Login (existente + nuevo), chat (talk/yell/whisper), movimiento
-- **Game Loops**: Se ha estabilizado el loop principal de lógica y timers asíncronos.
+- **Paquetes de red básicos**: Login (existente + nuevo), chat (talk/yell/whisper), movimiento, orientación, click izquierdo, desconexión
+- **Game Timers**: HP/mana regen, stamina regen, hambre, sed (todos activos con lógica completa)
 
-### ⚠️ Lo que está INCOMPLETO (TODOs del código)
+### ⚠️ Lo que está INCOMPLETO
 
-1. ~~**Game timers** (`Bootstrap.java:87`): `startTimers()` está vacío — no hay game loop~~ (Implementado y estabilizado)
-2. **Servicios pendientes** (`Bootstrap.java:114`): `TODO Load other services`
-3. **Service Locator** (`ApplicationContext.java:9`): Eliminar Injector estático
-4. **Combate**: Sin implementación de game loop de combate completo (aún en desarrollo)
-5. **Paquetes entrantes**: Solo 8 de ~129 del protocolo original
-6. **Paquetes salientes**: 22 de ~104 definidos pero no todos integrados
-7. **Sistema de persistencia**: Sin guardado (solo lectura de datos)
-8. **Cifrado real**: `DefaultSecurityManager` no cifra nada
-9. **Chat de guild**: Paquete definido pero sin lógica
-10. **Spawning de NPCs**: Servicio de NPC carga datos pero no spawnea completamente
+1. **IA de NPCs**: Timer activo cada `aiTick` ms, pero la lógica de comportamiento es un TODO
+2. **World Save**: Timer activo periódicamente, pero la escritura a disco es un TODO
+3. **Efectos temporales**: Timer activo (poison interval), lógica de limpieza de estados es un TODO
+4. **Service Locator** (`ApplicationContext`): Eliminar Injector estático pendiente
+5. **Paquetes entrantes**: Solo 11 de ~129 del protocolo original
+6. **Paquetes salientes**: 25 de ~104 definidos
+7. **Sistema de persistencia**: Solo lectura de datos
 
 ### 🔴 Lo que FALTA implementar
 
-- Game loop principal (tick-based)
+- Lógica completa de IA para NPCs
+- Escritura/guardado de personajes (world save)
+- Efectos temporales (veneno, parálisis, invisibilidad)
 - Sistema de combate PvP y PvE
 - Sistema de comercio (NPCs y entre jugadores)
 - Sistema de crafting
 - Sistema de guilds/clanes completo
 - Sistema de misiones/quests
 - Administración en runtime (comandos GM)
-- Persistencia de personajes (escritura)
 - Cifrado real del tráfico
 - **Implementar paquetes prioritarios para la jugabilidad (ver Roadmap Prioritario)**
 
@@ -472,9 +521,10 @@ pie title Estado de Implementación
 
 ## 🚀 Roadmap Prioritario: Paquetes de Red (MVP Jugable)
 
-Dado que el cliente ya tiene implementados 129 paquetes de entrada y 104 de salida, pero el servidor apenas tiene una fracción, la prioridad para lograr una versión **jugable (MVP)** es implementar la siguiente lista de paquetes. No es necesario tener todo perfecto en una primera iteración, sino lograr el feedback visual y mecánico base.
+Dado que el cliente ya tiene implementados 129 paquetes de entrada y 104 de salida, pero el servidor apenas tiene una fracción, la prioridad para lograr una versión **jugable (MVP)** es implementar la siguiente lista de paquetes.
 
-### 📥 Paquetes Entrantes (Cliente -> Servidor) Prioritarios
+### 📥 Paquetes Entrantes (Cliente → Servidor) Prioritarios
+
 1. **Acciones y Combate**
    - `Attack` (Golpe físico con arma o puño)
    - `CastSpell` (Lanzar hechizo a un target seleccionado)
@@ -487,21 +537,20 @@ Dado que el cliente ya tiene implementados 129 paquetes de entrada y 104 de sali
    - `CommerceStart` / `CommerceBuy` / `CommerceSell` (Comprar y vender a NPCs)
    - `Resurrect` (Pedir resurrección a un Priest NPC)
 
-### 📤 Paquetes Salientes (Servidor -> Cliente) Prioritarios
-1. **Sincronización de Entidades (Para ver a los demás)**
-   - `CharacterCreate` / `CharacterRemove` / `CharacterMove` (Sincronizar el spawn, movimiento y desaparición de otros usuarios y NPCs en el área visible)
-   - `ObjectCreate` / `ObjectDelete` (Ver los items que se caen o se agarran del suelo)
+### 📤 Paquetes Salientes (Servidor → Cliente) Prioritarios
+
+1. **Sincronización de Entidades**
+   - `CharacterCreate` / `CharacterRemove` / `CharacterMove` (Sincronizar spawn, movimiento y desaparición de usuarios y NPCs en área visible)
+   - `ObjectCreate` / `ObjectDelete` (Ver items en el suelo)
 2. **Feedback Visual y Combate**
-   - `UpdateHP` / `UpdateMana` / `UpdateStamina` (Reflejar el cambio de estado al usar pociones o recibir daño)
+   - `UpdateHP` / `UpdateMana` / `UpdateStamina` (Cambio de estado al usar pociones o recibir daño)
    - `UpdateGold` / `UpdateExp` (Al matar NPCs o comerciar)
    - `CreateFX` / `Blood` (Sangre y efectos visuales de hechizos)
    - `PlayWave` (Sonidos de golpes, hechizos, fallos)
 3. **Feedback de Interfaz**
    - `ConsoleMessage` (Mensajes de sistema: "Fallas el golpe", "No tienes suficiente maná", etc.)
-   - `ChatOverHead` (Textos flotantes encima de la cabeza de los personajes para daño, palabras mágicas, chat normal)
-   - `UpdateInventorySlot` / `ChangeSpellSlot` (Refrescar inventario tras comprar, agarrar o tirar items)
-
-Implementar esta lista de paquetes conectará el motor del servidor (que ya tiene los datos cargados de items y NPCs) con las capacidades visuales que ya soporta el cliente LWJGL3, dando lugar a una experiencia de juego interactiva.
+   - `ChatOverHead` (Textos flotantes encima de la cabeza de los personajes)
+   - `UpdateInventorySlot` / `ChangeSpellSlot` (Refrescar inventario)
 
 ---
 
